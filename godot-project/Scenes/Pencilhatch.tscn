@@ -1,0 +1,288 @@
+[gd_scene load_steps=23 format=3 uid="uid://cd7et0vujwy1l"]
+
+[ext_resource type="Texture2D" uid="uid://22lg13ia8ko7" path="res://Textures/HatchSet1/hatch_0.png" id="2_80ww3"]
+[ext_resource type="Texture2D" uid="uid://ditbcg24vcldf" path="res://Textures/HatchSet1/hatch_1.png" id="3_80ww3"]
+[ext_resource type="Texture2D" uid="uid://bhv0pgq2epd4s" path="res://Textures/HatchSet1/hatch_3.png" id="4_c5mdu"]
+[ext_resource type="Shader" uid="uid://dq60lckcaln3u" path="res://Shaders/HatchOutline.gdshader" id="6_o6hoy"]
+[ext_resource type="Shader" uid="uid://sir83bxbn2i4" path="res://Shaders/PencilHatch.gdshader" id="7_4ntyo"]
+[ext_resource type="PackedScene" uid="uid://dwbqybrkew35k" path="res://Scenes/trex.tscn" id="7_c5mdu"]
+[ext_resource type="PackedScene" uid="uid://d2w3grmyiqutm" path="res://Scenes/timmy.tscn" id="9_lo47g"]
+[ext_resource type="Texture2D" uid="uid://d2j533lv15o0i" path="res://Textures/HatchSet1/hatch_5.png" id="10_72eiv"]
+[ext_resource type="Texture2D" uid="uid://cnr8vhhmb0g6s" path="res://Textures/HatchSet1/hatch_4.png" id="11_gxnak"]
+
+[sub_resource type="Environment" id="Environment_6om6l"]
+background_color = Color(0.99558, 0.99558, 0.99558, 1)
+background_energy_multiplier = 0.0
+ambient_light_color = Color(1, 1, 1, 1)
+
+[sub_resource type="Shader" id="Shader_4ntyo"]
+code = "shader_type spatial;
+render_mode unshaded, vertex_lighting;
+
+uniform sampler2D depth_texture : hint_depth_texture,filter_linear_mipmap;
+uniform sampler2D normal_texture : hint_normal_roughness_texture,filter_linear_mipmap;
+uniform sampler2D screen_texture: hint_screen_texture,filter_linear_mipmap;
+
+
+uniform vec3 edge_color : source_color = vec3(0.0, 0.0, 0.0);
+uniform float edge_threshold: hint_range(0.001, 0.2, 0.001) = 0.01;
+
+uniform sampler2D hatch1: filter_nearest,repeat_enable;
+uniform sampler2D hatch2: filter_nearest,repeat_enable;
+uniform sampler2D hatch3: filter_nearest,repeat_enable;
+
+
+uniform float noise_frequency : hint_range(0.1, 20.0, 0.1)= 10.0 ;
+uniform float noise_offset_intensity : hint_range(0.0, 0.2, 0.001) = 0.002;
+
+
+vec2 hash(vec2 p) {
+    p = vec2(dot(p, vec2(127.1, 311.7)),
+             dot(p, vec2(269.5, 183.3)));
+    return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+}
+
+vec2 fade(vec2 t) {
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+}
+
+float grad(vec2 hash, vec2 dir) {
+    vec2 grad_dir = vec2(hash.x * 2.0 - 1.0, hash.y * 2.0 - 1.0);
+    return dot(grad_dir, dir);
+}
+
+float perlin(vec2 pos) {
+    vec2 p = floor(pos);
+    vec2 f = fract(pos);
+
+    f = fade(f);
+
+    vec2 top_left = p;
+    vec2 top_right = p + vec2(1.0, 0.0);
+    vec2 bottom_left = p + vec2(0.0, 1.0);
+    vec2 bottom_right = p + vec2(1.0, 1.0);
+
+    float tl = grad(hash(top_left), f);
+    float tr = grad(hash(top_right), f - vec2(1.0, 0.0));
+    float bl = grad(hash(bottom_left), f - vec2(0.0, 1.0));
+    float br = grad(hash(bottom_right), f - vec2(1.0, 1.0));
+
+    float top = mix(tl, tr, f.x);
+    float bottom = mix(bl, br, f.x);
+    return mix(top, bottom, f.y);
+}
+
+
+void vertex(){
+
+	//POSITION = vec4(VERTEX.xy,1.0,1.0);
+}
+
+void fragment() {
+	vec2 screen_uv = SCREEN_UV;
+	vec3 origin_color = texture(screen_texture,screen_uv).rgb;
+
+    // 获取当前位置的Perlin噪声值
+    vec2 noiseValue = vec2(perlin(screen_uv * noise_frequency), perlin((screen_uv + vec2(0.5, 0.5)) * noise_frequency));  // 10.0是频率，可以调整
+
+    // 使用噪声值偏移uv
+    vec2 uv = screen_uv + noiseValue * noise_offset_intensity;  // 0.02是偏移强度，可以根据需要调整
+	float dx = 1.0 / VIEWPORT_SIZE.x;
+	float dy = 1.0 / VIEWPORT_SIZE.y;
+	mat3 Gx = mat3(
+				vec3(-1, -2, -1),
+				vec3( 0,  0,  0),
+				vec3( 1,  2,  1)
+	);
+
+	mat3 Gy = mat3(
+			vec3(-1, 0, 1),
+			vec3(-2, 0, 2),
+			vec3(-1, 0, 1)
+	);
+
+    float depthSobelX = 0.0;
+    float depthSobelY = 0.0;
+
+    float normalSobelX = 0.0;
+    float normalSobelY = 0.0;
+
+    for(int i = -1; i <= 1; i++) {
+        for(int j = -1; j <= 1; j++) {
+			float depth = texture(depth_texture, uv + vec2(float(i) * dx, float(j) * dy)).r;
+			vec3 normal = normalize(texture(normal_texture, uv + vec2(float(i) * dx, float(j) * dy)).rgb * 2.0 - 1.0);
+			depthSobelX += Gx[i+1][j+1] * depth;
+			depthSobelY += Gy[i+1][j+1] * depth;
+			normalSobelX += Gx[i+1][j+1] * normal.x;
+			normalSobelY += Gy[i+1][j+1] * normal.y;
+        }
+    }
+
+    float depthMagnitude = length(vec2(depthSobelX, depthSobelY));
+    float normalMagnitude = length(vec2(normalSobelX, normalSobelY));
+
+    // Combine the results
+    float magnitude = depthMagnitude + normalMagnitude;
+
+
+	// distort the hatching
+	vec3 normal_sample = normalize(texture(normal_texture, uv).rgb * 2.0 - 1.0);
+	vec2 distorted_uv = uv + normal_sample.xy * 2.0 ;
+
+
+	vec3 screen_color = texture(screen_texture,uv).rgb;
+	float luminance = dot(screen_color, vec3(0.299, 0.587, 0.114));
+
+	vec4 texture_color;
+	if (luminance < 0.6){
+		texture_color = texture(hatch3,distorted_uv * 20.0);
+
+	}
+	else if (luminance < 0.7){
+		texture_color = texture(hatch2,distorted_uv * 20.0);
+	}
+	else if (luminance < 0.8){
+		texture_color = texture(hatch1,distorted_uv * 20.0);
+	}
+	else{
+		texture_color = texture(screen_texture,uv);
+	}
+    if (magnitude > edge_threshold) {
+        ALBEDO = edge_color;
+    } else {
+        // 使用纹理颜色
+        ALBEDO = texture_color.rgb;
+    }
+	
+	//ALBEDO = vec3(0., 1., 0.);
+	//ALPHA = 1.0;
+
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_nxxdt"]
+render_priority = 0
+shader = SubResource("Shader_4ntyo")
+shader_parameter/edge_color = Color(0, 0, 0, 1)
+shader_parameter/edge_threshold = 0.01
+shader_parameter/hatch1 = ExtResource("2_80ww3")
+shader_parameter/hatch2 = ExtResource("3_80ww3")
+shader_parameter/hatch3 = ExtResource("4_c5mdu")
+shader_parameter/noise_frequency = 10.0
+shader_parameter/noise_offset_intensity = 0.002
+
+[sub_resource type="QuadMesh" id="QuadMesh_80ww3"]
+material = SubResource("ShaderMaterial_nxxdt")
+size = Vector2(2, 2)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4ntyo"]
+render_priority = 0
+shader = ExtResource("6_o6hoy")
+shader_parameter/outline_color = Color(0.125911, 0.125911, 0.125911, 1)
+shader_parameter/outline_width = 0.01
+shader_parameter/displacementStrength = 0.025
+shader_parameter/noiseDensity = 8.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_lo47g"]
+render_priority = 0
+next_pass = SubResource("ShaderMaterial_4ntyo")
+shader = ExtResource("7_4ntyo")
+shader_parameter/_tint = Color(1, 0.921569, 0, 1)
+shader_parameter/_brightness = 0.02
+shader_parameter/_strokeColor = Color(0, 0, 0, 1)
+shader_parameter/_hatchTiling = 3.0
+shader_parameter/_hatchWeight = 0.797
+shader_parameter/_hatch0 = ExtResource("10_72eiv")
+shader_parameter/_hatch1 = ExtResource("11_gxnak")
+shader_parameter/_hatch2 = ExtResource("4_c5mdu")
+shader_parameter/_hatch3 = ExtResource("3_80ww3")
+shader_parameter/_hatch4 = ExtResource("2_80ww3")
+
+[sub_resource type="SphereMesh" id="SphereMesh_80ww3"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ljqbo"]
+render_priority = 0
+shader = ExtResource("6_o6hoy")
+shader_parameter/outline_color = Color(0, 0, 0, 1)
+shader_parameter/outline_width = 0.01
+shader_parameter/displacementStrength = 0.025
+shader_parameter/noiseDensity = 8.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_72eiv"]
+render_priority = 0
+next_pass = SubResource("ShaderMaterial_ljqbo")
+shader = ExtResource("7_4ntyo")
+shader_parameter/_tint = Color(1, 0.921569, 0, 1)
+shader_parameter/_brightness = 0.02
+shader_parameter/_strokeColor = Color(0, 0, 0, 1)
+shader_parameter/_hatchTiling = 3.0
+shader_parameter/_hatchWeight = 0.724
+shader_parameter/_hatch0 = ExtResource("10_72eiv")
+shader_parameter/_hatch1 = ExtResource("11_gxnak")
+shader_parameter/_hatch2 = ExtResource("4_c5mdu")
+shader_parameter/_hatch3 = ExtResource("3_80ww3")
+shader_parameter/_hatch4 = ExtResource("2_80ww3")
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_c5mdu"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_apuee"]
+render_priority = 0
+shader = ExtResource("7_4ntyo")
+shader_parameter/_tint = Color(1, 0.921569, 0, 1)
+shader_parameter/_brightness = 0.02
+shader_parameter/_strokeColor = Color(0, 0, 0, 1)
+shader_parameter/_hatchTiling = 3.0
+shader_parameter/_hatchWeight = 1.0
+shader_parameter/_hatch0 = ExtResource("10_72eiv")
+shader_parameter/_hatch1 = ExtResource("11_gxnak")
+shader_parameter/_hatch2 = ExtResource("4_c5mdu")
+shader_parameter/_hatch3 = ExtResource("2_80ww3")
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_6p7lb"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lo47g"]
+shading_mode = 0
+albedo_color = Color(1, 0.921569, 0, 1)
+
+[node name="Node3D" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_6om6l")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.706886, 0.653315, -0.271093, -0.372623, 0.669723, 0.642357, 0.601219, -0.353058, 0.716858, 0, 8.56019, 0)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.887816, -0.201738, 0.413625, 0, 0.898794, 0.438371, -0.4602, -0.389193, 0.797963, 7.574, 8.059, 5.329)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Camera3D"]
+transform = Transform3D(1, -4.47035e-08, 2.98023e-08, 0, 1, 0, 0, 2.98023e-08, 1, 0, 0, -0.1)
+visible = false
+mesh = SubResource("QuadMesh_80ww3")
+skeleton = NodePath("../..")
+
+[node name="Sphere" type="MeshInstance3D" parent="."]
+transform = Transform3D(3.92, 0, 0, 0, 3.92, 0, 0, 0, 3.92, -7.10649, 1.878, -1.074)
+material_override = SubResource("ShaderMaterial_lo47g")
+mesh = SubResource("SphereMesh_80ww3")
+
+[node name="cylinder" type="MeshInstance3D" parent="."]
+transform = Transform3D(1.62432, 0, -3.86619, 0, 4.19355, 0, 3.86619, 0, 1.62432, 14.3884, 2.184, -7.283)
+material_override = SubResource("ShaderMaterial_72eiv")
+mesh = SubResource("CylinderMesh_c5mdu")
+
+[node name="GroundPlane" type="MeshInstance3D" parent="."]
+transform = Transform3D(20, 0, 0, 0, 1, 0, 0, 0, 11.023, 0, 0, -8.10346)
+material_override = SubResource("ShaderMaterial_apuee")
+mesh = SubResource("PlaneMesh_6p7lb")
+
+[node name="BGPlane" type="MeshInstance3D" parent="."]
+transform = Transform3D(1000, 0, 0, 0, -4.37114e-08, -1000, 0, 1, -4.37114e-05, 0, 0, -29.758)
+material_override = SubResource("StandardMaterial3D_lo47g")
+mesh = SubResource("PlaneMesh_6p7lb")
+
+[node name="TrexByJoel3d" parent="." instance=ExtResource("7_c5mdu")]
+transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, -3, 0, -7)
+
+[node name="Timmy" parent="." instance=ExtResource("9_lo47g")]
+transform = Transform3D(6, 0, 0, 0, 6, 0, 0, 0, 6, 5.33153, 0, -2.56947)

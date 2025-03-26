@@ -1,0 +1,51 @@
+[gd_scene load_steps=13 format=3 uid="uid://dwbqybrkew35k"]
+
+[ext_resource type="PackedScene" uid="uid://c7rpnk85cgku1" path="res://Models/TrexModelByJoel3d_FBX/TrexByJoel3d.fbx" id="1_wnm2u"]
+[ext_resource type="Shader" uid="uid://sir83bxbn2i4" path="res://Shaders/PencilHatch.gdshader" id="2_4vi21"]
+[ext_resource type="Shader" uid="uid://dq60lckcaln3u" path="res://Shaders/HatchOutline.gdshader" id="2_edx4m"]
+[ext_resource type="Texture2D" uid="uid://d2j533lv15o0i" path="res://Textures/HatchSet1/hatch_5.png" id="3_edx4m"]
+[ext_resource type="Texture2D" uid="uid://cnr8vhhmb0g6s" path="res://Textures/HatchSet1/hatch_4.png" id="4_msfbq"]
+[ext_resource type="Texture2D" uid="uid://bhv0pgq2epd4s" path="res://Textures/HatchSet1/hatch_3.png" id="5_wk152"]
+[ext_resource type="Texture2D" uid="uid://ditbcg24vcldf" path="res://Textures/HatchSet1/hatch_1.png" id="7_otaa7"]
+[ext_resource type="Texture2D" uid="uid://22lg13ia8ko7" path="res://Textures/HatchSet1/hatch_0.png" id="8_uowf7"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_msfbq"]
+render_priority = 0
+shader = ExtResource("2_edx4m")
+shader_parameter/outline_color = Color(0, 0, 0, 1)
+shader_parameter/outline_width = 1.0
+shader_parameter/displacementStrength = 0.001
+shader_parameter/noiseDensity = 8.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8agdl"]
+render_priority = 0
+next_pass = SubResource("ShaderMaterial_msfbq")
+shader = ExtResource("2_4vi21")
+shader_parameter/_tint = Color(1, 0.921569, 0, 1)
+shader_parameter/_brightness = 0.02
+shader_parameter/_strokeColor = Color(0, 0, 0, 1)
+shader_parameter/_hatchTiling = 5.0
+shader_parameter/_hatchWeight = 0.735
+shader_parameter/_hatch0 = ExtResource("3_edx4m")
+shader_parameter/_hatch1 = ExtResource("4_msfbq")
+shader_parameter/_hatch2 = ExtResource("5_wk152")
+shader_parameter/_hatch3 = ExtResource("7_otaa7")
+shader_parameter/_hatch4 = ExtResource("8_uowf7")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8agdl"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_edx4m"]
+
+[node name="TrexByJoel3d" instance=ExtResource("1_wnm2u")]
+transform = Transform3D(100, 0, 0, 0, 100, 0, 0, 0, 100, 0, 0, 0)
+
+[node name="Skin" parent="trexGeoGrp" index="0"]
+material_override = SubResource("ShaderMaterial_8agdl")
+
+[node name="teeth1" parent="trexGeoGrp" index="7"]
+visible = false
+material_override = SubResource("StandardMaterial3D_8agdl")
+
+[node name="claws1" parent="trexGeoGrp" index="8"]
+visible = false
+material_override = SubResource("StandardMaterial3D_edx4m")

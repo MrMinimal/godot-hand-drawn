@@ -1,0 +1,40 @@
+[gd_scene load_steps=12 format=3 uid="uid://d2w3grmyiqutm"]
+
+[ext_resource type="PackedScene" uid="uid://ddey8p1ckrcss" path="res://Models/Timmy/Timmy.fbx" id="1_cb06c"]
+[ext_resource type="Shader" uid="uid://sir83bxbn2i4" path="res://Shaders/PencilHatch.gdshader" id="2_31rw6"]
+[ext_resource type="Shader" uid="uid://dq60lckcaln3u" path="res://Shaders/HatchOutline.gdshader" id="2_175du"]
+[ext_resource type="Texture2D" uid="uid://d2j533lv15o0i" path="res://Textures/HatchSet1/hatch_5.png" id="3_175du"]
+[ext_resource type="Texture2D" uid="uid://cnr8vhhmb0g6s" path="res://Textures/HatchSet1/hatch_4.png" id="4_y51v5"]
+[ext_resource type="Texture2D" uid="uid://bhv0pgq2epd4s" path="res://Textures/HatchSet1/hatch_3.png" id="5_saqbf"]
+[ext_resource type="Texture2D" uid="uid://ditbcg24vcldf" path="res://Textures/HatchSet1/hatch_1.png" id="6_3jjc1"]
+[ext_resource type="Texture2D" uid="uid://22lg13ia8ko7" path="res://Textures/HatchSet1/hatch_0.png" id="7_tttal"]
+[ext_resource type="Texture2D" uid="uid://bybr6mnxrui6h" path="res://Models/Timmy/Timmy_0.png" id="8_802xt"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_y51v5"]
+render_priority = 0
+shader = ExtResource("2_175du")
+shader_parameter/outline_color = Color(0, 0, 0, 1)
+shader_parameter/outline_width = 1.0
+shader_parameter/displacementStrength = 0.015
+shader_parameter/noiseDensity = 7.1
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vwlnc"]
+render_priority = 0
+next_pass = SubResource("ShaderMaterial_y51v5")
+shader = ExtResource("2_31rw6")
+shader_parameter/_mainTex = ExtResource("8_802xt")
+shader_parameter/_tint = Color(1, 0.921569, 0, 1)
+shader_parameter/_brightness = 0.02
+shader_parameter/_strokeColor = Color(0, 0, 0, 1)
+shader_parameter/_hatchTiling = 5.0
+shader_parameter/_hatchWeight = 0.75
+shader_parameter/_hatch0 = ExtResource("3_175du")
+shader_parameter/_hatch1 = ExtResource("4_y51v5")
+shader_parameter/_hatch2 = ExtResource("5_saqbf")
+shader_parameter/_hatch3 = ExtResource("6_3jjc1")
+shader_parameter/_hatch4 = ExtResource("7_tttal")
+
+[node name="Timmy" instance=ExtResource("1_cb06c")]
+
+[node name="Ch09" parent="Skeleton3D" index="0"]
+material_override = SubResource("ShaderMaterial_vwlnc")
